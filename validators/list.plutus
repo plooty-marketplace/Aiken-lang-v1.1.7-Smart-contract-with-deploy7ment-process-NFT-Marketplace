@@ -1,0 +1,31 @@
+import aiken/builtin
+import aiken/tx
+
+-- Purchase Validator
+validator purchase(
+  redeemer: {id: ByteArray, buyer: Address},
+  tx_context: ScriptContext
+) -> Bool {
+  let
+    tx_info = tx_context.tx_info
+    policy_id = tx_context.policy_id
+    asset_id = redeemer.id
+
+    -- Find the input UTxO containing the NFT
+    input_nft = tx.find_input(
+      tx_info.inputs,
+      {policy_id: policy_id, asset_name: asset_id}
+    )
+
+    -- Check that the NFT is listed for sale
+    is_listed = input_nft.price != None
+
+    -- Validate payment matches the listing price
+    price_match = tx.payment_matches(
+      tx_info.outputs,
+      redeemer.buyer,
+      input_nft.price.unwrap
+    )
+  in
+    is_listed && price_match
+}
